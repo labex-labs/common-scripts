@@ -161,6 +161,8 @@ class Sync:
         # Count words in description
         if len(lab_desc) > 1:
             lab_desc_words = len(lab_desc.split())
+        else:
+            lab_desc_words = 0
         # Get and merge skills
         lab_skills = []
         for step in lab_steps:
