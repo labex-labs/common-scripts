@@ -7,30 +7,31 @@ from jsonschema import validate
 
 
 class Feishu:
-    """Feishu API
-    """
+    """Feishu API"""
 
     def __init__(self, app_id: str, app_secret: str) -> None:
         self.app_id = app_id
         self.app_secret = app_secret
 
     def tenant_access_token(self):
-        """Get tenant access token
-        """
+        """Get tenant access token"""
         r = requests.post(
             url="https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
-            headers={"Content-Type": "application/json; charset=utf-8",},
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+            },
             data=json.dumps({"app_id": self.app_id, "app_secret": self.app_secret}),
         )
         return r.json()["tenant_access_token"]
 
     def get_bitable_records(self, app_token: str, table_id: str, params: str) -> None:
-        """Get bitable records
-        """
+        """Get bitable records"""
         records = []
         r = requests.get(
             url=f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records?{params}",
-            headers={"Authorization": f"Bearer {self.tenant_access_token()}",},
+            headers={
+                "Authorization": f"Bearer {self.tenant_access_token()}",
+            },
         )
         if r.json()["data"]["total"] > 0:
             records += r.json()["data"]["items"]
@@ -39,15 +40,16 @@ class Feishu:
                 page_token = r.json()["data"]["page_token"]
                 r = requests.get(
                     url=f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records?page_token={page_token}&{params}",
-                    headers={"Authorization": f"Bearer {self.tenant_access_token()}",},
+                    headers={
+                        "Authorization": f"Bearer {self.tenant_access_token()}",
+                    },
                 )
                 if r.json()["data"]["total"] > 0:
                     records += r.json()["data"]["items"]
         return records
 
     def add_bitable_record(self, app_token: str, table_id: str, data: dict) -> None:
-        """Add record to bitable
-        """
+        """Add record to bitable"""
         r = requests.post(
             url=f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records",
             headers={
@@ -61,8 +63,7 @@ class Feishu:
     def update_bitable_record(
         self, app_token: str, table_id: str, record_id: str, data: dict
     ) -> None:
-        """Update record in bitable
-        """
+        """Update record in bitable"""
         r = requests.put(
             url=f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/{record_id}",
             headers={
@@ -76,8 +77,7 @@ class Feishu:
     def delete_bitable_record(
         self, app_token: str, table_id: str, record_id: str
     ) -> None:
-        """Delete record in bitable
-        """
+        """Delete record in bitable"""
         r = requests.delete(
             url=f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/{record_id}",
             headers={
@@ -282,11 +282,11 @@ class Sync:
         deleted = 0
         for path in repo_path_dicts:
             if path not in data_paths:
-                record_id = repo_path_dicts[path]["record_id"]
+                record_id = path_dicts[path]["record_id"]
                 r = self.feishu.delete_bitable_record(
                     self.app_token, self.table_id, record_id
                 )
-                print(f"× Deleting {path} {r['msg'].upper()}")
+                print(f"× Deleting {record_id}-{path} {r['msg'].upper()}")
                 deleted += 1
         print(f"Deleted {deleted} labs")
 
@@ -309,4 +309,3 @@ if __name__ == "__main__":
 
     sync = Sync(args.appid, args.appsecret, args.repo, args.schema)
     sync.sync(skip=args.skip)
-
