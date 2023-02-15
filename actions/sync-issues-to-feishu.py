@@ -205,6 +205,7 @@ class Sync:
                 try:
                     issue_title = issue["title"]
                     issue_number = issue["number"]
+                    issue_title_ = f"{issue_number}-{issue_title}"
                     issue_state = issue["state"]
                     issues_html_url = issue["html_url"]
                     # assignees
@@ -234,7 +235,7 @@ class Sync:
                     # payloads
                     payloads = {
                         "fields": {
-                            "ISSUE_TITLE": f"{issue_number}-{issue_title}",
+                            "ISSUE_TITLE": issue_title_,
                             "SCENARIO_TITLE": issue_title.replace("challenge-", "")
                             .replace("lab-", "")
                             .replace("-", " ")
@@ -251,24 +252,20 @@ class Sync:
                         }
                     }
                     # Update record
-                    if issue_title in records_dicts.keys():
+                    if issue_title_ in records_dicts.keys():
                         r = self.feishu.update_bitable_record(
                             self.app_token,
                             self.table_id,
-                            records_dicts[issue_title],
+                            records_dicts[issue_title_],
                             payloads,
                         )
-                        print(
-                            f"→ Updating {issue_number}-{issue_title} {r['msg'].upper()}"
-                        )
+                        print(f"→ Updating {issue_title_} {r['msg'].upper()}")
                     else:
                         # Add record
                         r = self.feishu.add_bitable_record(
                             self.app_token, self.table_id, payloads
                         )
-                        print(
-                            f"↑ Adding {issue_number}-{issue_title} {r['msg'].upper()}"
-                        )
+                        print(f"↑ Adding {issue_title_} {r['msg'].upper()}")
 
                 except Exception as e:
                     print(f"Erro: {e}")
