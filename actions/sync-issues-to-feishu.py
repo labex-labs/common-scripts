@@ -226,7 +226,7 @@ class Sync:
                     if len(skills) == 0:
                         skills = []
                     else:
-                        skills = [s.replace("`", "") for s in skills]
+                        skills = [s.replace("`", "").replace(" ", "") for s in skills]
                     # search skills in feishu
                     skills_record_ids = []
                     for skill in skills:
@@ -248,6 +248,7 @@ class Sync:
                             "ASSIGNEES": assignees,
                             "ISSUE_LABELS": issues_labels,
                             "SCENARIO_SKILLS": skills_record_ids,
+                            "SKILLS": skills,
                             "ISSUE_BODY": issues_body,
                         }
                     }
