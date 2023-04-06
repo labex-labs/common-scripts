@@ -165,10 +165,12 @@ class Sync:
             lab_desc_words = 0
         # Get and merge skills
         lab_skills = []
-        for step in lab_steps:
+        skills_raw = {}
+        for i, step in enumerate(lab_steps):
             skills = step.get("skills")
             if skills:
                 lab_skills.extend(skills)
+                skills_raw[f"step{i+1}"] = skills
         # Get record is from skills tree table
         if len(lab_skills) > 0:
             in_skills_tree = []
@@ -191,6 +193,7 @@ class Sync:
             "BACKEND": lab_backend,
             "SKILLS_ID": list(set(lab_skills)),
             "SKILLS_TREE": list(set(in_skills_tree)),
+            "SKILLS_RAW": json.dumps(skills_raw),
             "SKILLS_ERROR": list(set(not_in_skills_tree)),
             "DESC_WORDS": lab_desc_words,
             "DESC": lab_desc,
