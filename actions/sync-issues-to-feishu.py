@@ -98,29 +98,39 @@ class GitHub:
         Args:
             repo_name (str): 仓库名称
         """
-        issues = []
-        # 获取第一页 issues 列表
+        url = f"https://api.github.com/repos/{repo_name}/issues"
+        headers = {
+            "Authorization": "token " + self.token,
+            "Accept": "application/vnd.github+json",
+        }
+        params = {
+            "state": "all",
+            "per_page": 100,
+        }
+
+        all_issues = []
         page = 1
-        r = requests.get(
-            url=f"https://api.github.com/repos/{repo_name}/issues?page={page}",
-            headers={
-                "Authorization": "token " + self.token,
-                "Accept": "application/vnd.github.v3+json",
-            },
-        )
-        issues.extend(r.json())
-        # 获取剩余 issues 列表
-        while r.links.get("next"):
+
+        while True:
+            params["page"] = page
+            print(f"Fetching page {page} of issues...")
+            response = requests.get(url, headers=headers, params=params)
+            if response.status_code != 200:
+                raise Exception(
+                    f"Error retrieving issues: {response.status_code}, {response.text}"
+                )
+
+            issues = response.json()
+            if not issues:
+                break
+
+            all_issues.extend(issues)
             page += 1
-            r = requests.get(
-                url=f"https://api.github.com/repos/{repo_name}/issues?page={page}",
-                headers={
-                    "Authorization": "token " + self.token,
-                    "Accept": "application/vnd.github.v3+json",
-                },
-            )
-            issues.extend(r.json())
-        return issues
+
+        # 仅保留 Issue，去掉 PR
+        noly_issues = [i for i in all_issues if "pull_request" not in i.keys()]
+
+        return noly_issues
 
     def patch_issues_info(self, issues_api_url: str, data: dict) -> None:
         """更新 issues 信息
@@ -205,7 +215,6 @@ class Sync:
                 try:
                     issue_title = issue["title"]
                     issue_number = issue["number"]
-                    issue_title_ = f"{issue_number}-{issue_title}"
                     issue_state = issue["state"]
                     issues_html_url = issue["html_url"]
                     # assignees
@@ -235,7 +244,8 @@ class Sync:
                     # payloads
                     payloads = {
                         "fields": {
-                            "ISSUE_TITLE": issue_title_,
+                            "ISSUE_TITLE": issue_title,
+                            "ISSUE_NUM": issue_number,
                             "SCENARIO_TITLE": issue_title.replace("challenge-", "")
                             .replace("lab-", "")
                             .replace("-", " ")
@@ -253,20 +263,20 @@ class Sync:
                         }
                     }
                     # Update record
-                    if issue_title_ in records_dicts.keys():
+                    if issue_title in records_dicts.keys():
                         r = self.feishu.update_bitable_record(
                             self.app_token,
                             self.table_id,
-                            records_dicts[issue_title_],
+                            records_dicts[issue_title],
                             payloads,
                         )
-                        print(f"→ Updating {issue_title_} {r['msg'].upper()}")
+                        print(f"→ Updating {issue_title} {r['msg'].upper()}")
                     else:
                         # Add record
                         r = self.feishu.add_bitable_record(
                             self.app_token, self.table_id, payloads
                         )
-                        print(f"↑ Adding {issue_title_} {r['msg'].upper()}")
+                        print(f"↑ Adding {issue_title} {r['msg'].upper()}")
 
                 except Exception as e:
                     print(f"Erro: {e}")
