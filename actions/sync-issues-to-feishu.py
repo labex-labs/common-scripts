@@ -166,6 +166,7 @@ class Sync:
                     issue_title = issue["title"]
                     issue_number = issue["number"]
                     issue_state = issue["state"]
+                    issue_user = issue["user"]["login"]
                     issues_html_url = issue["html_url"]
                     # assignees
                     assignees = issue["assignees"]
@@ -201,6 +202,7 @@ class Sync:
                             .replace("-", " ")
                             .title(),
                             "ISSUE_STATE": issue_state.upper(),
+                            "ISSUE_USER": issue_user,
                             "HTML_URL": {
                                 "link": issues_html_url,
                                 "text": "OPEN IN GITHUB",
