@@ -204,6 +204,7 @@ class Sync:
                 if index_json != None:
                     lab_title = index_json.get("title")
                     lab_type = index_json.get("type")
+                    lab_steps = index_json.get("details").get("steps")
                     pr_title = pr["title"]
                     pr_state = pr["state"]
                     pr_user = pr["user"]["login"]
@@ -236,6 +237,7 @@ class Sync:
                             "SCENARIO_TITLE": lab_title,
                             "SCENARIO_SLUG": lab_slug,
                             "SCENARIO_TYPE": lab_type,
+                            "SCENARIO_STEP": len(lab_steps),
                             "PR_TITLE": pr_title,
                             "PR_USER": pr_user,
                             "PR_NUM": pr_number,
