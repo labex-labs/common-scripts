@@ -229,8 +229,9 @@ class Sync:
                         print(f"↑ Adding {issue_title} {r['msg'].upper()}")
 
                 except Exception as e:
-                    print(f"Erro: {e}")
-                    continue
+                    print(f"Exception: {e}")
+                    print(issue)
+                    pass
 
 
 if __name__ == "__main__":

@@ -138,6 +138,7 @@ class GitHub:
 
 class Sync:
     def __init__(self, app_id: str, app_secret: str, ghtoken: str) -> None:
+        self.ghtoken = ghtoken
         self.github = GitHub(token=ghtoken)
         self.feishu = Feishu(app_id, app_secret)
         self.app_token = "bascnNz4Nqjqgqm1Nm5AYke6xxb"
@@ -147,6 +148,7 @@ class Sync:
         url = f"https://api.github.com/repos/{repo_name}/pulls/{pr_number}/files"
         headers = {
             "Accept": "application/vnd.github+json",
+            "Authorization": "token " + self.ghtoken,
         }
         response = requests.get(url, headers=headers)
         raw_urls = []
@@ -172,6 +174,7 @@ class Sync:
         url = f"https://api.github.com/repos/{repo_name}/pulls/{pr_number}/reviews"
         headers = {
             "Accept": "application/vnd.github+json",
+            "Authorization": "token " + self.ghtoken,
         }
         response = requests.get(url, headers=headers)
         approved_by = []
@@ -266,7 +269,7 @@ class Sync:
 
             except Exception as e:
                 print(f"Exception: {e}")
-                continue
+                pass
 
 
 if __name__ == "__main__":
