@@ -199,12 +199,12 @@ class Sync:
         for pr in pr_list:
             try:
                 # parse index.json
+                pr_number = pr["number"]
                 index_json, lab_slug = self.pr_index_json(repo_name, pr_number)
                 if index_json != None:
                     lab_title = index_json.get("title")
                     lab_type = index_json.get("type")
                     pr_title = pr["title"]
-                    pr_number = pr["number"]
                     pr_state = pr["state"]
                     pr_user = pr["user"]["login"]
                     pr_html_url = pr["html_url"]
