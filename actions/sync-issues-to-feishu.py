@@ -132,56 +132,6 @@ class GitHub:
 
         return noly_issues
 
-    def patch_issues_info(self, issues_api_url: str, data: dict) -> None:
-        """更新 issues 信息
-
-        Args:
-            issues_api_url (str): issues api url
-            data (dict): 更新数据
-        """
-        r = requests.patch(
-            url=issues_api_url,
-            headers={
-                "Authorization": "token " + self.token,
-                "Accept": "application/vnd.github.v3+json",
-            },
-            data=json.dumps(data),
-        )
-        return r.json()
-
-    def search_issues(self, keywords: str) -> list:
-        """搜索 issues
-
-        Args:
-            keywords (str): 搜索关键词
-        """
-        r = requests.get(
-            url=f"https://api.github.com/search/issues?q={keywords}",
-            headers={
-                "Authorization": "token " + self.token,
-                "Accept": "application/vnd.github.v3+json",
-            },
-        )
-        return r.json()
-
-    def issues_add_labels(self, issues_api_url: str, labels: list) -> None:
-        """添加 issues 标签
-
-        Args:
-            issues_api_url (str): issues api url
-            labels (list): 标签名
-        """
-        r = requests.post(
-            url=f"{issues_api_url}/labels",
-            headers={
-                "Authorization": "token " + self.token,
-                "Accept": "application/vnd.github.v3+json",
-            },
-            # 添加标签
-            data=json.dumps({"labels": labels}),
-        )
-        return r.json()
-
 
 class Sync:
     def __init__(self, app_id: str, app_secret: str, ghtoken: str) -> None:
@@ -284,7 +234,7 @@ class Sync:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Sync Repo labs to Feishu")
+    parser = argparse.ArgumentParser(description="Sync Repo Issues to Feishu")
     parser.add_argument("--appid", type=str, help="Feishu App ID")
     parser.add_argument("--appsecret", type=str, help="Feishu App Secret")
     parser.add_argument(
