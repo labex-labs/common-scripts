@@ -230,8 +230,7 @@ class Sync:
 
                 except Exception as e:
                     print(f"Exception: {e}")
-                    print(issue)
-                    pass
+                    continue
 
 
 if __name__ == "__main__":

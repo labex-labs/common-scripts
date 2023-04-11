@@ -168,7 +168,7 @@ class Sync:
             lab_slug = raw_urls[0]["filename"].removesuffix("/index.json")
             return index_json, lab_slug
         else:
-            raise Exception(f"Found {len(raw_urls)} index.json in PR {pr_number}.")
+            return None, None
 
     def pr_reviews(self, repo_name: str, pr_number: int) -> list:
         url = f"https://api.github.com/repos/{repo_name}/pulls/{pr_number}/reviews"
@@ -198,78 +198,80 @@ class Sync:
         print(f"Found {len(pr_list)} pr in GitHub.")
         for pr in pr_list:
             try:
-                pr_title = pr["title"]
-                pr_number = pr["number"]
-                pr_state = pr["state"]
-                pr_user = pr["user"]["login"]
-                pr_html_url = pr["html_url"]
-                # assignees
-                assignees = pr["assignees"]
-                if len(assignees) == 0:
-                    assignees = []
-                else:
-                    assignees = [a["login"] for a in assignees]
-                # labels
-                pr_labels = pr["labels"]
-                if len(pr_labels) == 0:
-                    pr_labels = []
-                else:
-                    pr_labels = [l["name"] for l in pr_labels]
-                # milestone
-                milestone = pr.get("milestone")
-                if milestone != None:
-                    milestone = pr.get("milestone").get("title")
-                # MERGED_BY
-                merged_by = pr.get("merged_by")
                 # parse index.json
                 index_json, lab_slug = self.pr_index_json(repo_name, pr_number)
-                lab_title = index_json.get("title")
-                lab_type = index_json.get("type")
-                # pr_reviews
-                approved_by, changes_requested_by = self.pr_reviews(
-                    repo_name, pr_number
-                )
-                # payloads
-                payloads = {
-                    "fields": {
-                        "SCENARIO_TITLE": lab_title,
-                        "SCENARIO_SLUG": lab_slug,
-                        "SCENARIO_TYPE": lab_type,
-                        "PR_TITLE": pr_title,
-                        "PR_USER": pr_user,
-                        "PR_NUM": pr_number,
-                        "PR_STATE": pr_state.upper(),
-                        "PR_LABELS": pr_labels,
-                        "ASSIGNEES": assignees,
-                        "MERGED": merged_by,
-                        "MILESTONE": milestone,
-                        "CHANGES_REQUESTED": changes_requested_by,
-                        "APPROVED": approved_by,
-                        "HTML_URL": {
-                            "link": pr_html_url,
-                            "text": "OPEN IN GITHUB",
-                        },
+                if index_json != None:
+                    lab_title = index_json.get("title")
+                    lab_type = index_json.get("type")
+                    pr_title = pr["title"]
+                    pr_number = pr["number"]
+                    pr_state = pr["state"]
+                    pr_user = pr["user"]["login"]
+                    pr_html_url = pr["html_url"]
+                    # assignees
+                    assignees = pr["assignees"]
+                    if len(assignees) == 0:
+                        assignees = []
+                    else:
+                        assignees = [a["login"] for a in assignees]
+                    # labels
+                    pr_labels = pr["labels"]
+                    if len(pr_labels) == 0:
+                        pr_labels = []
+                    else:
+                        pr_labels = [l["name"] for l in pr_labels]
+                    # milestone
+                    milestone = pr.get("milestone")
+                    if milestone != None:
+                        milestone = pr.get("milestone").get("title")
+                    # MERGED_BY
+                    merged_by = pr.get("merged_by")
+                    # pr_reviews
+                    approved_by, changes_requested_by = self.pr_reviews(
+                        repo_name, pr_number
+                    )
+                    # payloads
+                    payloads = {
+                        "fields": {
+                            "SCENARIO_TITLE": lab_title,
+                            "SCENARIO_SLUG": lab_slug,
+                            "SCENARIO_TYPE": lab_type,
+                            "PR_TITLE": pr_title,
+                            "PR_USER": pr_user,
+                            "PR_NUM": pr_number,
+                            "PR_STATE": pr_state.upper(),
+                            "PR_LABELS": pr_labels,
+                            "ASSIGNEES": assignees,
+                            "MERGED": merged_by,
+                            "MILESTONE": milestone,
+                            "CHANGES_REQUESTED": changes_requested_by,
+                            "APPROVED": approved_by,
+                            "HTML_URL": {
+                                "link": pr_html_url,
+                                "text": "OPEN IN GITHUB",
+                            },
+                        }
                     }
-                }
-                # Update record
-                if lab_slug in records_dicts.keys():
-                    r = self.feishu.update_bitable_record(
-                        self.app_token,
-                        self.table_id,
-                        records_dicts[lab_slug],
-                        payloads,
-                    )
-                    print(f"→ Updating {lab_slug} {r['msg'].upper()}")
+                    # Update record
+                    if lab_slug in records_dicts.keys():
+                        r = self.feishu.update_bitable_record(
+                            self.app_token,
+                            self.table_id,
+                            records_dicts[lab_slug],
+                            payloads,
+                        )
+                        print(f"→ Updating {lab_slug} {r['msg'].upper()}")
+                    else:
+                        # Add record
+                        r = self.feishu.add_bitable_record(
+                            self.app_token, self.table_id, payloads
+                        )
+                        print(f"↑ Adding {lab_slug} {r['msg'].upper()}")
                 else:
-                    # Add record
-                    r = self.feishu.add_bitable_record(
-                        self.app_token, self.table_id, payloads
-                    )
-                    print(f"↑ Adding {lab_slug} {r['msg'].upper()}")
-
+                    print(f"→ Skipping {pr_number} because no index.json found.")
             except Exception as e:
                 print(f"Exception: {e}")
-                pass
+                continue
 
 
 if __name__ == "__main__":
