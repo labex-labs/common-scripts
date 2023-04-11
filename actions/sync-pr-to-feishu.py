@@ -227,6 +227,8 @@ class Sync:
                         milestone = pr.get("milestone").get("title")
                     # MERGED_BY
                     merged_by = pr.get("merged_by")
+                    if merged_by != None:
+                        merged_by = pr.get("merged_by").get("login")
                     # pr_reviews
                     approved_by, changes_requested_by = self.pr_reviews(
                         repo_name, pr_number
