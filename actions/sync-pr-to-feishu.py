@@ -192,7 +192,7 @@ class Sync:
             self.app_token, self.table_id, params=""
         )
         # Make a dict of PR_TITLE and record_id
-        records_dicts = {r["fields"]["SCENARIO_SLUG"]: r["record_id"] for r in records}
+        records_dicts = {r["fields"]["SCENARIO_PATH"]: r["record_id"] for r in records}
         # Get all pr from github
         pr_list = self.github.get_pr_list(repo_name)
         print(f"Found {len(pr_list)} pr in GitHub.")
