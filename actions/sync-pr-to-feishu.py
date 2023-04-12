@@ -1,8 +1,7 @@
-import re
 import json
 import requests
 import argparse
-
+from datetime import datetime
 
 class Feishu:
     """Feishu API"""
@@ -229,6 +228,10 @@ class Sync:
                     approved_by, changes_requested_by = self.pr_reviews(
                         repo_name, pr_number
                     )
+                    # created at
+                    created_at_str = pr["created_at"]
+                    date_obj = datetime.strptime(created_at_str, '%Y-%m-%dT%H:%M:%SZ')
+                    unix_ms_timestamp = int(date_obj.timestamp() * 1000)
                     # payloads
                     payloads = {
                         "fields": {
@@ -246,6 +249,7 @@ class Sync:
                             "MILESTONE": milestone,
                             "CHANGES_REQUESTED": changes_requested_by,
                             "APPROVED": approved_by,
+                            "CREATED_AT": unix_ms_timestamp,
                             "HTML_URL": {
                                 "link": pr_html_url,
                                 "text": "OPEN IN GITHUB",
