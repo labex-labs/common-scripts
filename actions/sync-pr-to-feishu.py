@@ -187,10 +187,13 @@ class Sync:
         return list(set(approved_by)), list(set(changes_requested_by))
 
     def unix_ms_timestamp(self, time_str: str) -> int:
-        date_obj = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%SZ") + timedelta(
-            hours=8
-        )
-        unix_ms_timestamp = int(date_obj.timestamp() * 1000)
+        if time_str != None:
+            date_obj = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%SZ") + timedelta(
+                hours=8
+            )
+            unix_ms_timestamp = int(date_obj.timestamp() * 1000)
+        else:
+            unix_ms_timestamp = 1681277738910
         return unix_ms_timestamp
 
     def sync_pr(self, repo_name: str) -> None:
