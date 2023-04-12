@@ -201,8 +201,8 @@ class Sync:
         records = self.feishu.get_bitable_records(
             self.app_token, self.table_id, params=""
         )
-        # Make a dict of PR_TITLE and record_id
-        records_dicts = {r["fields"]["SCENARIO_PATH"]: r["record_id"] for r in records}
+        # Make a dict of PR_NUMBER and record_id
+        records_dicts = {r["fields"]["PR_NUMBER"]: r["record_id"] for r in records}
         # Get all pr from github
         pr_list = self.github.get_pr_list(repo_name)
         print(f"Found {len(pr_list)} pr in GitHub.")
@@ -270,11 +270,11 @@ class Sync:
                         }
                     }
                     # Update record
-                    if lab_path in records_dicts.keys():
+                    if str(pr_number) in records_dicts.keys():
                         r = self.feishu.update_bitable_record(
                             self.app_token,
                             self.table_id,
-                            records_dicts[lab_path],
+                            records_dicts[str(pr_number)],
                             payloads,
                         )
                         print(f"→ Updating {lab_path} {r['msg'].upper()}")
