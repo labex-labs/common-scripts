@@ -186,6 +186,13 @@ class Sync:
                 changes_requested_by.append(review["user"]["login"])
         return list(set(approved_by)), list(set(changes_requested_by))
 
+    def unix_ms_timestamp(self, time_str: str) -> int:
+        date_obj = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%SZ") + timedelta(
+            hours=8
+        )
+        unix_ms_timestamp = int(date_obj.timestamp() * 1000)
+        return unix_ms_timestamp
+
     def sync_pr(self, repo_name: str) -> None:
         # Get all records from feishu
         records = self.feishu.get_bitable_records(
@@ -230,11 +237,9 @@ class Sync:
                         repo_name, pr_number
                     )
                     # created at
-                    created_at_str = pr["created_at"]
-                    date_obj = datetime.strptime(
-                        created_at_str, "%Y-%m-%dT%H:%M:%SZ"
-                    ) + timedelta(hours=8)
-                    unix_ms_timestamp = int(date_obj.timestamp() * 1000)
+                    created_at = self.unix_ms_timestamp(pr["created_at"])
+                    updated_at = self.unix_ms_timestamp(pr["updated_at"])
+                    merged_at = self.unix_ms_timestamp(pr["merged_at"])
                     # payloads
                     payloads = {
                         "fields": {
@@ -252,7 +257,9 @@ class Sync:
                             "MILESTONE": milestone,
                             "CHANGES_REQUESTED": changes_requested_by,
                             "APPROVED": approved_by,
-                            "CREATED_AT": unix_ms_timestamp,
+                            "CREATED_AT": created_at,
+                            "UPDATED_AT":updated_at,
+                            "MERGED_AT":merged_at,
                             "HTML_URL": {
                                 "link": pr_html_url,
                                 "text": "OPEN IN GITHUB",
