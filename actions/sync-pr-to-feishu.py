@@ -1,7 +1,8 @@
 import json
 import requests
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 class Feishu:
     """Feishu API"""
@@ -230,7 +231,9 @@ class Sync:
                     )
                     # created at
                     created_at_str = pr["created_at"]
-                    date_obj = datetime.strptime(created_at_str, '%Y-%m-%dT%H:%M:%SZ')
+                    date_obj = datetime.strptime(
+                        created_at_str, "%Y-%m-%dT%H:%M:%SZ"
+                    ) + timedelta(hours=8)
                     unix_ms_timestamp = int(date_obj.timestamp() * 1000)
                     # payloads
                     payloads = {
