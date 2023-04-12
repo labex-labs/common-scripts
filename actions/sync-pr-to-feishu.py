@@ -193,7 +193,7 @@ class Sync:
             )
             unix_ms_timestamp = int(date_obj.timestamp() * 1000)
         else:
-            unix_ms_timestamp = 1681277738910
+            unix_ms_timestamp = 946656000000
         return unix_ms_timestamp
 
     def sync_pr(self, repo_name: str) -> None:
