@@ -155,8 +155,8 @@ class Sync:
         records = self.feishu.get_bitable_records(
             self.app_token, self.table_id, params=""
         )
-        # Make a dict of ISSUE_TITLE and record_id
-        records_dicts = {r["fields"]["ISSUE_TITLE"]: r["record_id"] for r in records}
+        # Make a dict of ISSUE_NUM and record_id
+        records_dicts = {r["fields"]["ISSUE_NUM"]: r["record_id"] for r in records}
         # Get all issues from github
         issues_list = self.github.get_issues_list(repo_name)
         print(f"Found {len(issues_list)} issues in GitHub.")
@@ -187,6 +187,15 @@ class Sync:
                         skills = []
                     else:
                         skills = [s.replace("`", "").replace(" ", "") for s in skills]
+                    # steps
+                    steps = re.findall(r"建议步骤数\*\*:(.*[0-9])", issues_body)
+                    if len(steps) == 0:
+                        steps_num = 0
+                    else:
+                        try:
+                            steps_num = int(steps[0].strip())
+                        except:
+                            steps_num = 0
                     # search skills in feishu
                     skills_record_ids = []
                     for skill in skills:
@@ -199,6 +208,7 @@ class Sync:
                             "ISSUE_NUM": issue_number,
                             "ISSUE_STATE": issue_state.upper(),
                             "ISSUE_USER": issue_user,
+                            "ISSUE_STEPS": steps_num,
                             "HTML_URL": {
                                 "link": issues_html_url,
                                 "text": "OPEN IN GITHUB",
@@ -211,11 +221,11 @@ class Sync:
                         }
                     }
                     # Update record
-                    if issue_title in records_dicts.keys():
+                    if str(issue_number) in records_dicts.keys():
                         r = self.feishu.update_bitable_record(
                             self.app_token,
                             self.table_id,
-                            records_dicts[issue_title],
+                            records_dicts[str(issue_number)],
                             payloads,
                         )
                         print(f"→ Updating {issue_title} {r['msg'].upper()}")
