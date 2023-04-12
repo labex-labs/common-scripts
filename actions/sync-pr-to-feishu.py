@@ -165,8 +165,8 @@ class Sync:
         if len(raw_urls) == 1:
             print(f"Found {len(raw_urls)} index.json in PR {pr_number}.")
             index_json = requests.get(raw_urls[0]["raw_url"]).json()
-            lab_slug = raw_urls[0]["filename"].removesuffix("/index.json")
-            return index_json, lab_slug
+            lab_path = raw_urls[0]["filename"].removesuffix("/index.json")
+            return index_json, lab_path
         else:
             return None, None
 
@@ -200,7 +200,7 @@ class Sync:
             try:
                 # parse index.json
                 pr_number = pr["number"]
-                index_json, lab_slug = self.pr_index_json(repo_name, pr_number)
+                index_json, lab_path = self.pr_index_json(repo_name, pr_number)
                 if index_json != None:
                     lab_title = index_json.get("title")
                     lab_type = index_json.get("type")
@@ -233,7 +233,8 @@ class Sync:
                     payloads = {
                         "fields": {
                             "SCENARIO_TITLE": lab_title,
-                            "SCENARIO_SLUG": lab_slug,
+                            "SCENARIO_PATH": lab_path,
+                            "SCENARIO_SLUG": lab_path.split("/")[-1],
                             "SCENARIO_TYPE": lab_type,
                             "SCENARIO_STEP": len(lab_steps),
                             "PR_TITLE": pr_title,
@@ -252,20 +253,20 @@ class Sync:
                         }
                     }
                     # Update record
-                    if lab_slug in records_dicts.keys():
+                    if lab_path in records_dicts.keys():
                         r = self.feishu.update_bitable_record(
                             self.app_token,
                             self.table_id,
-                            records_dicts[lab_slug],
+                            records_dicts[lab_path],
                             payloads,
                         )
-                        print(f"→ Updating {lab_slug} {r['msg'].upper()}")
+                        print(f"→ Updating {lab_path} {r['msg'].upper()}")
                     else:
                         # Add record
                         r = self.feishu.add_bitable_record(
                             self.app_token, self.table_id, payloads
                         )
-                        print(f"↑ Adding {lab_slug} {r['msg'].upper()}")
+                        print(f"↑ Adding {lab_path} {r['msg'].upper()}")
                 else:
                     print(f"→ Skipping {pr_number} because no index.json found.")
             except Exception as e:

@@ -197,10 +197,6 @@ class Sync:
                         "fields": {
                             "ISSUE_TITLE": issue_title,
                             "ISSUE_NUM": issue_number,
-                            "SCENARIO_TITLE": issue_title.replace("challenge-", "")
-                            .replace("lab-", "")
-                            .replace("-", " ")
-                            .title(),
                             "ISSUE_STATE": issue_state.upper(),
                             "ISSUE_USER": issue_user,
                             "HTML_URL": {
