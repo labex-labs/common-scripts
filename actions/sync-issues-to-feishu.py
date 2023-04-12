@@ -239,7 +239,8 @@ class Sync:
                 except Exception as e:
                     print(f"Exception: {e}")
                     continue
-
+            else:
+                print(f"Locked: {issue['title']}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sync Repo Issues to Feishu")
