@@ -141,6 +141,8 @@ class Sync:
         path_slug = file_path.removeprefix("./").removesuffix("/index.json")
         if len(direction) > 0:
             lab_direction = direction[0].replace("./", "").title()
+            if lab_direction == "Numpy":
+                lab_direction = "NumPy"
         else:
             lab_direction = None
         lab_title = index.get("title", None)
