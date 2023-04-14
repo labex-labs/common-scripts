@@ -3,6 +3,7 @@ import os
 import json
 import requests
 import argparse
+from statistics import mode
 from jsonschema import validate
 
 
@@ -173,6 +174,8 @@ class Sync:
             if skills:
                 lab_skills.extend(skills)
                 skills_raw[f"step{i+1}"] = skills
+        # get main skill
+        main_skill = mode(lab_skills)
         # Get record is from skills tree table
         if len(lab_skills) > 0:
             in_skills_tree = []
@@ -193,6 +196,7 @@ class Sync:
             "STEPS": len(lab_steps),
             "SCRIPTS": lab_scripts,
             "BACKEND": lab_backend,
+            "MAIN_SKILL": main_skill,
             "SKILLS_ID": list(set(lab_skills)),
             "SKILLS_TREE": list(set(in_skills_tree)),
             "SKILLS_RAW": json.dumps(skills_raw),
@@ -279,6 +283,7 @@ class Sync:
                         print(f"↑ Adding {data_path} {r['msg'].upper()}")
                 except Exception as e:
                     print(f"× Error {data_path} {e}")
+                    print(data)
         # Delete records not in this repo
         repo_path_dicts = [
             path for path in path_dicts if path_dicts[path]["repo_name"] == self.repo
