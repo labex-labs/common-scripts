@@ -342,13 +342,9 @@ class Sync:
                             print(f"↑ Adding {lab_path} {r['msg'].upper()}")
                     else:
                         print(f"→ Skipping {pr_number} because no index.json found.")
-                else:
-                    print(f"→ Skipping {pr_number} because it's closed.")
-                # Assign issue user to PR
-                pr_body = pr["body"]
-                issue_id = self.get_pr_assign_issue_id(pr_body)
-                # 只处理 open 的 pr
-                if pr_state == "open":
+                    # Assign issue user to PR
+                    pr_body = pr["body"]
+                    issue_id = self.get_pr_assign_issue_id(pr_body)
                     # 如果 issue_id 不为 0
                     if issue_id != 0:
                         issue = self.github.get_issue(repo_name, issue_id)
