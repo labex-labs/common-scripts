@@ -344,7 +344,7 @@ class Sync:
                 # Assign issue user to PR
                 pr_body = pr["body"]
                 issue_id = self.get_pr_assign_issue_id(pr_body)
-                if issue_id != 0:
+                if issue_id != 0 and pr_state == "open":
                     issue = self.github.get_issue(repo_name, issue_id)
                     issue_user = issue["user"]["login"]
                     # 判断是否已经assign
@@ -366,12 +366,9 @@ class Sync:
                     else:
                         print(f"→ {issue_user} already assign to PR#{pr_number}")
                 else:
-                    if pr_state == "open":
-                        comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。"
-                        self.github.comment_pr(repo_name, pr_number, comment)
-                        print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
-                    else:
-                        print(f"→ No issue id found in {pr_number}, and PR is closed, skip")
+                    comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。"
+                    self.github.comment_pr(repo_name, pr_number, comment)
+                    print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
             except Exception as e:
                 print(f"Exception: {e}")
                 continue
