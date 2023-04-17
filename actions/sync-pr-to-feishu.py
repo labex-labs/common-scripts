@@ -263,13 +263,14 @@ class Sync:
         print(f"Found {len(pr_list)} PR in GitHub.")
         # Feishu 未关闭的 PR
         feishu_not_closed_pr_nums = [str(r["fields"]["PR_NUM"]) for r in records if r["fields"]["PR_STATE"] == "OPEN"]
+        print(f"Found {len(feishu_not_closed_pr_nums)} OPEN PR in Feishu.")
         # 忽略已经关闭的 PR
         pr_list = [
             pr
             for pr in pr_list
             if pr["state"] == "open" or str(pr["number"]) in feishu_not_closed_pr_nums
         ]
-        print(f"Processing {len(pr_list)} PR...")
+        print(f"Processing {len(pr_list)} OPEN PR...")
         for pr in pr_list:
             try:
                 # Parse and Update index.json
