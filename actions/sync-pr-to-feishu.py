@@ -266,6 +266,7 @@ class Sync:
                 # Parse and Update index.json
                 pr_number = pr["number"]
                 pr_user = pr["user"]["login"]
+                pr_state = pr["state"]
                 # assignees
                 assignees = pr["assignees"]
                 if len(assignees) == 0 or assignees == None:
@@ -284,7 +285,6 @@ class Sync:
                     lab_type = index_json.get("type")
                     lab_steps = index_json.get("details").get("steps")
                     pr_title = pr["title"]
-                    pr_state = pr["state"]
                     pr_html_url = pr["html_url"]
                     # milestone
                     milestone = pr.get("milestone")
@@ -366,9 +366,12 @@ class Sync:
                     else:
                         print(f"→ {issue_user} already assign to PR#{pr_number}")
                 else:
-                    comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。"
-                    self.github.comment_pr(repo_name, pr_number, comment)
-                    print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
+                    if pr_state == "open":
+                        comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。"
+                        self.github.comment_pr(repo_name, pr_number, comment)
+                        print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
+                    else:
+                        print(f"→ No issue id found in {pr_number}, and PR is closed, skip")
             except Exception as e:
                 print(f"Exception: {e}")
                 continue
