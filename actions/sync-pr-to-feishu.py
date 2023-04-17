@@ -366,9 +366,12 @@ class Sync:
                     else:
                         print(f"→ {issue_user} already assign to PR#{pr_number}")
                 else:
-                    comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。"
-                    self.github.comment_pr(repo_name, pr_number, comment)
-                    print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
+                    if pr_state == "open":
+                        comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。"
+                        self.github.comment_pr(repo_name, pr_number, comment)
+                        print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
+                    else:
+                        print(f"→ PR#{pr_number} is not open, skip assign issue user and comment to PR user")
             except Exception as e:
                 print(f"Exception: {e}")
                 continue
