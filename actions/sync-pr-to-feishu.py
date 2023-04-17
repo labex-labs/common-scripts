@@ -203,7 +203,7 @@ class Sync:
                     }
                 )
         if len(raw_urls) == 1:
-            print(f"Found {len(raw_urls)} index.json in PR {pr_number}.")
+            print(f"→ Found {len(raw_urls)} index.json in PR#{pr_number}.")
             index_json = requests.get(raw_urls[0]["raw_url"]).json()
             lab_path = raw_urls[0]["filename"].removesuffix("/index.json")
             return index_json, lab_path
@@ -279,72 +279,74 @@ class Sync:
                     pr_labels_list = []
                 else:
                     pr_labels_list = [l["name"] for l in pr_labels]
-                if pr_state == "open":
-                    index_json, lab_path = self.pr_index_json(repo_name, pr_number)
-                    if index_json != None:
-                        lab_title = index_json.get("title")
-                        lab_type = index_json.get("type")
-                        lab_steps = index_json.get("details").get("steps")
-                        pr_title = pr["title"]
-                        pr_html_url = pr["html_url"]
-                        # milestone
-                        milestone = pr.get("milestone")
-                        if milestone != None:
-                            milestone = pr.get("milestone").get("title")
-                        # pr_reviews
-                        approved_by, changes_requested_by = self.pr_reviews(
-                            repo_name, pr_number
-                        )
-                        # created at
-                        created_at = self.unix_ms_timestamp(pr["created_at"])
-                        updated_at = self.unix_ms_timestamp(pr["updated_at"])
-                        merged_at = self.unix_ms_timestamp(pr["merged_at"])
-                        # payloads
-                        payloads = {
-                            "fields": {
-                                "SCENARIO_TITLE": lab_title,
-                                "SCENARIO_PATH": lab_path,
-                                "SCENARIO_SLUG": lab_path.split("/")[-1],
-                                "SCENARIO_TYPE": lab_type,
-                                "SCENARIO_STEP": len(lab_steps),
-                                "PR_TITLE": pr_title,
-                                "PR_USER": pr_user,
-                                "PR_NUM": pr_number,
-                                "PR_STATE": pr_state.upper(),
-                                "PR_LABELS": pr_labels_list,
-                                "ASSIGNEES": assignees_list,
-                                "MILESTONE": milestone,
-                                "CHANGES_REQUESTED": changes_requested_by,
-                                "APPROVED": approved_by,
-                                "CREATED_AT": created_at,
-                                "UPDATED_AT": updated_at,
-                                "MERGED_AT": merged_at,
-                                "HTML_URL": {
-                                    "link": pr_html_url,
-                                    "text": "OPEN IN GITHUB",
-                                },
-                            }
+                print(f"Processing PR#{pr_number}...")
+                index_json, lab_path = self.pr_index_json(repo_name, pr_number)
+                if index_json != None:
+                    lab_title = index_json.get("title")
+                    lab_type = index_json.get("type")
+                    lab_steps = index_json.get("details").get("steps")
+                    pr_title = pr["title"]
+                    pr_html_url = pr["html_url"]
+                    # milestone
+                    milestone = pr.get("milestone")
+                    if milestone != None:
+                        milestone = pr.get("milestone").get("title")
+                    # pr_reviews
+                    approved_by, changes_requested_by = self.pr_reviews(
+                        repo_name, pr_number
+                    )
+                    # created at
+                    created_at = self.unix_ms_timestamp(pr["created_at"])
+                    updated_at = self.unix_ms_timestamp(pr["updated_at"])
+                    merged_at = self.unix_ms_timestamp(pr["merged_at"])
+                    # payloads
+                    payloads = {
+                        "fields": {
+                            "SCENARIO_TITLE": lab_title,
+                            "SCENARIO_PATH": lab_path,
+                            "SCENARIO_SLUG": lab_path.split("/")[-1],
+                            "SCENARIO_TYPE": lab_type,
+                            "SCENARIO_STEP": len(lab_steps),
+                            "PR_TITLE": pr_title,
+                            "PR_USER": pr_user,
+                            "PR_NUM": pr_number,
+                            "PR_STATE": pr_state.upper(),
+                            "PR_LABELS": pr_labels_list,
+                            "ASSIGNEES": assignees_list,
+                            "MILESTONE": milestone,
+                            "CHANGES_REQUESTED": changes_requested_by,
+                            "APPROVED": approved_by,
+                            "CREATED_AT": created_at,
+                            "UPDATED_AT": updated_at,
+                            "MERGED_AT": merged_at,
+                            "HTML_URL": {
+                                "link": pr_html_url,
+                                "text": "OPEN IN GITHUB",
+                            },
                         }
-                        # Update record
-                        if str(pr_number) in records_dicts.keys():
-                            r = self.feishu.update_bitable_record(
-                                self.app_token,
-                                self.table_id,
-                                records_dicts[str(pr_number)],
-                                payloads,
-                            )
-                            print(f"→ Updating {lab_path} {r['msg'].upper()}")
-                        else:
-                            # Add record
-                            r = self.feishu.add_bitable_record(
-                                self.app_token, self.table_id, payloads
-                            )
-                            print(f"↑ Adding {lab_path} {r['msg'].upper()}")
+                    }
+                    # Update record
+                    if str(pr_number) in records_dicts.keys():
+                        r = self.feishu.update_bitable_record(
+                            self.app_token,
+                            self.table_id,
+                            records_dicts[str(pr_number)],
+                            payloads,
+                        )
+                        print(f"→ Updating {lab_path} {r['msg'].upper()}")
                     else:
-                        print(f"→ Skipping {pr_number} because no index.json found.")
-                    # Assign issue user to PR
-                    pr_body = pr["body"]
-                    issue_id = self.get_pr_assign_issue_id(pr_body)
+                        # Add record
+                        r = self.feishu.add_bitable_record(
+                            self.app_token, self.table_id, payloads
+                        )
+                        print(f"↑ Adding {lab_path} {r['msg'].upper()}")
+                else:
+                    print(f"→ Skipping {pr_number} because no index.json found.")
+                # Assign issue user to PR
+                pr_body = pr["body"]
+                issue_id = self.get_pr_assign_issue_id(pr_body)
+                # 如果 pr_state 为 open
+                if pr_state == "open":
                     # 如果 issue_id 不为 0
                     if issue_id != 0:
                         issue = self.github.get_issue(repo_name, issue_id)
@@ -380,7 +382,7 @@ class Sync:
                         self.github.comment_pr(repo_name, pr_number, comment)
                         print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
                 else:
-                    print(f"→ PR#{pr_number} is closed, skiped")
+                    print(f"→ Skipping add Reviewer to PR#{pr_number}, because it's closed.")
             except Exception as e:
                 print(f"Exception: {e}")
                 continue
