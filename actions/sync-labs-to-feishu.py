@@ -174,8 +174,6 @@ class Sync:
             if skills:
                 lab_skills.extend(skills)
                 skills_raw[f"step{i+1}"] = skills
-        # get main skill
-        main_skill = mode(lab_skills)
         # Get record is from skills tree table
         if len(lab_skills) > 0:
             in_skills_tree = []
@@ -196,7 +194,6 @@ class Sync:
             "STEPS": len(lab_steps),
             "SCRIPTS": lab_scripts,
             "BACKEND": lab_backend,
-            "MAIN_SKILL": main_skill,
             "SKILLS_ID": list(set(lab_skills)),
             "SKILLS_TREE": list(set(in_skills_tree)),
             "SKILLS_RAW": json.dumps(skills_raw),
