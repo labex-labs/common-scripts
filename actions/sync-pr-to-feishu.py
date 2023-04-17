@@ -356,7 +356,7 @@ class Sync:
                                 repo_name, pr_number, assignees_list
                             )
                             # 添加评论
-                            comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review"
+                            comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
                             self.github.comment_pr(repo_name, pr_number, comment)
                             print(
                                 f"→ Assign {issue_user} to PR#{pr_number}, and comment to reviewer {issue_user}"
@@ -367,11 +367,11 @@ class Sync:
                         print(f"→ {issue_user} already assign to PR#{pr_number}")
                 else:
                     if pr_state == "open":
-                        comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。"
+                        comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。\n\n如有疑问可以直接回复本条评论，或者微信联系。"
                         self.github.comment_pr(repo_name, pr_number, comment)
                         print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
                     else:
-                        print(f"→ PR#{pr_number} is not open, skip assign issue user and comment to PR user")
+                        print(f"→ PR#{pr_number} is closed, skip assign issue user and comment to PR user")
             except Exception as e:
                 print(f"Exception: {e}")
                 continue
