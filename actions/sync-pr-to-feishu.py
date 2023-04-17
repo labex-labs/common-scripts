@@ -380,6 +380,8 @@ class Sync:
                                     print(
                                         f"→ Adding {issue_user} as a reviewer to PR#{pr_number}."
                                     )
+                                else:
+                                    print(f"→ {issue_user} is already a reviewer.")
                             # 测试完成，如果 issue user 等于 pr_user
                             else:
                                 # 且 huhuhang 不在 assignees 里，准备添加
@@ -396,6 +398,8 @@ class Sync:
                                     print(
                                         f"→ Adding huhuhang as a reviewer to PR#{pr_number}."
                                     )
+                                else:
+                                    print(f"→ huhuhang is already a reviewer.")
                         else:
                             # 未测完
                             print(f"→ PR#{pr_number} is not Test Completed")
