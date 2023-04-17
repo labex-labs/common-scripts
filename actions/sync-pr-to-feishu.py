@@ -257,7 +257,11 @@ class Sync:
             self.app_token, self.table_id, params=""
         )
         # Make a dict of PR_NUMBER and record_id
-        records_dicts = {r["fields"]["PR_NUM"]: r["record_id"] for r in records}
+        num_id_dicts = {r["fields"]["PR_NUM"]: r["record_id"] for r in records}
+        # Make a dict of PR_NUMBER and PR_STATE
+        num_state_dicts = {
+            r["fields"]["PR_NUM"]: r["fields"]["PR_STATE"] for r in records
+        }
         # Get all pr from github
         pr_list = self.github.get_pr_list(repo_name)
         print(f"Found {len(pr_list)} pr in GitHub.")
@@ -279,110 +283,129 @@ class Sync:
                     pr_labels_list = []
                 else:
                     pr_labels_list = [l["name"] for l in pr_labels]
-                print(f"Processing PR#{pr_number}...")
-                index_json, lab_path = self.pr_index_json(repo_name, pr_number)
-                if index_json != None:
-                    lab_title = index_json.get("title")
-                    lab_type = index_json.get("type")
-                    lab_steps = index_json.get("details").get("steps")
-                    pr_title = pr["title"]
-                    pr_html_url = pr["html_url"]
-                    # milestone
-                    milestone = pr.get("milestone")
-                    if milestone != None:
-                        milestone = pr.get("milestone").get("title")
-                    # pr_reviews
-                    approved_by, changes_requested_by = self.pr_reviews(
-                        repo_name, pr_number
-                    )
-                    # created at
-                    created_at = self.unix_ms_timestamp(pr["created_at"])
-                    updated_at = self.unix_ms_timestamp(pr["updated_at"])
-                    merged_at = self.unix_ms_timestamp(pr["merged_at"])
-                    # payloads
-                    payloads = {
-                        "fields": {
-                            "SCENARIO_TITLE": lab_title,
-                            "SCENARIO_PATH": lab_path,
-                            "SCENARIO_SLUG": lab_path.split("/")[-1],
-                            "SCENARIO_TYPE": lab_type,
-                            "SCENARIO_STEP": len(lab_steps),
-                            "PR_TITLE": pr_title,
-                            "PR_USER": pr_user,
-                            "PR_NUM": pr_number,
-                            "PR_STATE": pr_state.upper(),
-                            "PR_LABELS": pr_labels_list,
-                            "ASSIGNEES": assignees_list,
-                            "MILESTONE": milestone,
-                            "CHANGES_REQUESTED": changes_requested_by,
-                            "APPROVED": approved_by,
-                            "CREATED_AT": created_at,
-                            "UPDATED_AT": updated_at,
-                            "MERGED_AT": merged_at,
-                            "HTML_URL": {
-                                "link": pr_html_url,
-                                "text": "OPEN IN GITHUB",
-                            },
+                if pr_state == "closed" and num_state_dicts.get(pr_number) == "CLOSED":
+                    print(f"Processing PR#{pr_number}, it is closed.")
+                else:
+                    print(f"Processing PR#{pr_number}...")
+                    index_json, lab_path = self.pr_index_json(repo_name, pr_number)
+                    if index_json != None:
+                        lab_title = index_json.get("title")
+                        lab_type = index_json.get("type")
+                        lab_steps = index_json.get("details").get("steps")
+                        pr_title = pr["title"]
+                        pr_html_url = pr["html_url"]
+                        # milestone
+                        milestone = pr.get("milestone")
+                        if milestone != None:
+                            milestone = pr.get("milestone").get("title")
+                        # pr_reviews
+                        approved_by, changes_requested_by = self.pr_reviews(
+                            repo_name, pr_number
+                        )
+                        # created at
+                        created_at = self.unix_ms_timestamp(pr["created_at"])
+                        updated_at = self.unix_ms_timestamp(pr["updated_at"])
+                        merged_at = self.unix_ms_timestamp(pr["merged_at"])
+                        # payloads
+                        payloads = {
+                            "fields": {
+                                "SCENARIO_TITLE": lab_title,
+                                "SCENARIO_PATH": lab_path,
+                                "SCENARIO_SLUG": lab_path.split("/")[-1],
+                                "SCENARIO_TYPE": lab_type,
+                                "SCENARIO_STEP": len(lab_steps),
+                                "PR_TITLE": pr_title,
+                                "PR_USER": pr_user,
+                                "PR_NUM": pr_number,
+                                "PR_STATE": pr_state.upper(),
+                                "PR_LABELS": pr_labels_list,
+                                "ASSIGNEES": assignees_list,
+                                "MILESTONE": milestone,
+                                "CHANGES_REQUESTED": changes_requested_by,
+                                "APPROVED": approved_by,
+                                "CREATED_AT": created_at,
+                                "UPDATED_AT": updated_at,
+                                "MERGED_AT": merged_at,
+                                "HTML_URL": {
+                                    "link": pr_html_url,
+                                    "text": "OPEN IN GITHUB",
+                                },
+                            }
                         }
-                    }
-                    # Update record
-                    if str(pr_number) in records_dicts.keys():
-                        r = self.feishu.update_bitable_record(
-                            self.app_token,
-                            self.table_id,
-                            records_dicts[str(pr_number)],
-                            payloads,
-                        )
-                        print(f"→ Updating {lab_path} {r['msg'].upper()}")
-                    else:
-                        # Add record
-                        r = self.feishu.add_bitable_record(
-                            self.app_token, self.table_id, payloads
-                        )
-                        print(f"↑ Adding {lab_path} {r['msg'].upper()}")
-                else:
-                    print(f"→ Skipping {pr_number} because no index.json found.")
-                # Assign issue user to PR
-                pr_body = pr["body"]
-                issue_id = self.get_pr_assign_issue_id(pr_body)
-                # 如果 pr_state 为 open
-                if pr_state == "open":
-                    # 如果 issue_id 不为 0
-                    if issue_id != 0:
-                        issue = self.github.get_issue(repo_name, issue_id)
-                        issue_user = issue["user"]["login"]
-                        # 判断是否已经测试完成
-                        if "Test Completed" in pr_labels_list:
-                            # 测试完成，如果 issue user 不等于 pr_user
-                            if issue_user != pr_user:
-                                # 且 issue user 不在 assignees 里，准备添加
-                                if issue_user not in assignees_list:
-                                    # 添加 issue user
-                                    assignees_list.append(issue_user)
-                                    comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
-                                    self.github.patch_pr_assignees(repo_name, pr_number, assignees_list)
-                                    self.github.comment_pr(repo_name, pr_number, comment)
-                                    print(f"→ Adding {issue_user} as a reviewer to PR#{pr_number}.")
-                            # 测试完成，如果 issue user 等于 pr_user
-                            else:
-                                # 且 huhuhang 不在 assignees 里，准备添加
-                                if "huhuhang" not in assignees_list:
-                                    # 添加 huhuhang
-                                    assignees_list.append("huhuhang")
-                                    comment = f"Hi, @huhuhang \n\n系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
-                                    self.github.patch_pr_assignees(repo_name, pr_number, assignees_list)
-                                    self.github.comment_pr(repo_name, pr_number, comment)
-                                    print(f"→ Adding huhuhang as a reviewer to PR#{pr_number}.")
+                        # Update record
+                        if str(pr_number) in num_id_dicts.keys():
+                            r = self.feishu.update_bitable_record(
+                                self.app_token,
+                                self.table_id,
+                                num_id_dicts[str(pr_number)],
+                                payloads,
+                            )
+                            print(f"→ Updating {lab_path} {r['msg'].upper()}")
                         else:
-                            # 未测完
-                            print(f"→ PR#{pr_number} is not Test Completed")
-                    # 如果 issue_id 为 0
+                            # Add record
+                            r = self.feishu.add_bitable_record(
+                                self.app_token, self.table_id, payloads
+                            )
+                            print(f"↑ Adding {lab_path} {r['msg'].upper()}")
                     else:
-                        comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。\n\n如有疑问可以直接回复本条评论，或者微信联系。"
-                        self.github.comment_pr(repo_name, pr_number, comment)
-                        print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
-                else:
-                    print(f"→ Skipping add Reviewer to PR#{pr_number}, because it's closed.")
+                        print(f"→ Skipping {pr_number} because no index.json found.")
+                    # Assign issue user to PR
+                    pr_body = pr["body"]
+                    issue_id = self.get_pr_assign_issue_id(pr_body)
+                    # 如果 pr_state 为 open
+                    if pr_state == "open":
+                        # 如果 issue_id 不为 0
+                        if issue_id != 0:
+                            issue = self.github.get_issue(repo_name, issue_id)
+                            issue_user = issue["user"]["login"]
+                            # 判断是否已经测试完成
+                            if "Test Completed" in pr_labels_list:
+                                # 测试完成，如果 issue user 不等于 pr_user
+                                if issue_user != pr_user:
+                                    # 且 issue user 不在 assignees 里，准备添加
+                                    if issue_user not in assignees_list:
+                                        # 添加 issue user
+                                        assignees_list.append(issue_user)
+                                        comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
+                                        self.github.patch_pr_assignees(
+                                            repo_name, pr_number, assignees_list
+                                        )
+                                        self.github.comment_pr(
+                                            repo_name, pr_number, comment
+                                        )
+                                        print(
+                                            f"→ Adding {issue_user} as a reviewer to PR#{pr_number}."
+                                        )
+                                # 测试完成，如果 issue user 等于 pr_user
+                                else:
+                                    # 且 huhuhang 不在 assignees 里，准备添加
+                                    if "huhuhang" not in assignees_list:
+                                        # 添加 huhuhang
+                                        assignees_list.append("huhuhang")
+                                        comment = f"Hi, @huhuhang \n\n系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
+                                        self.github.patch_pr_assignees(
+                                            repo_name, pr_number, assignees_list
+                                        )
+                                        self.github.comment_pr(
+                                            repo_name, pr_number, comment
+                                        )
+                                        print(
+                                            f"→ Adding huhuhang as a reviewer to PR#{pr_number}."
+                                        )
+                            else:
+                                # 未测完
+                                print(f"→ PR#{pr_number} is not Test Completed")
+                        # 如果 issue_id 为 0
+                        else:
+                            comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。\n\n如有疑问可以直接回复本条评论，或者微信联系。"
+                            self.github.comment_pr(repo_name, pr_number, comment)
+                            print(
+                                f"→ No issue id found in {pr_number}, comment to {pr_user}"
+                            )
+                    else:
+                        print(
+                            f"→ Skipping add Reviewer to PR#{pr_number}, because it's closed."
+                        )
             except Exception as e:
                 print(f"Exception: {e}")
                 continue
