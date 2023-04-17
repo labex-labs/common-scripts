@@ -258,18 +258,16 @@ class Sync:
         )
         # Make a dict of PR_NUMBER and record_id
         num_id_dicts = {r["fields"]["PR_NUM"]: r["record_id"] for r in records}
-        # Make a dict of PR_NUMBER and PR_STATE
-        num_state_dicts = {
-            r["fields"]["PR_NUM"]: r["fields"]["PR_STATE"] for r in records
-        }
         # Get all pr from github
         pr_list = self.github.get_pr_list(repo_name)
         print(f"Found {len(pr_list)} PR in GitHub.")
+        # Feishu 未关闭的 PR
+        feishu_not_closed_pr_nums = [str(r["fields"]["PR_NUM"]) for r in records if r["fields"]["PR_STATE"] == "OPEN"]
         # 忽略已经关闭的 PR
         pr_list = [
             pr
             for pr in pr_list
-            if pr["state"] == "open" or num_state_dicts.get(pr["number"]) == "OPEN"
+            if pr["state"] == "open" or str(pr["number"]) in feishu_not_closed_pr_nums
         ]
         print(f"Processing {len(pr_list)} PR...")
         for pr in pr_list:
