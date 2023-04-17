@@ -1,3 +1,4 @@
+import re
 import json
 import requests
 import argparse
@@ -91,6 +92,45 @@ class GitHub:
 
     def __init__(self, token: str) -> None:
         self.token = token
+
+    def get_issue(self, repo_name: str, issue_number: int) -> str:
+        url = f"https://api.github.com/repos/{repo_name}/issues/{issue_number}"
+        headers = {
+            "Authorization": "token " + self.token,
+            "Accept": "application/vnd.github+json",
+        }
+        r = requests.get(url, headers=headers)
+        return r.json()
+
+    def patch_pr_assignees(
+        self, repo_name: str, pr_number: int, assignees: list
+    ) -> dict:
+        url = f"https://api.github.com/repos/{repo_name}/issues/{pr_number}"
+        r = requests.patch(
+            url=url,
+            headers={
+                "Authorization": "token " + self.token,
+                "Accept": "application/vnd.github+json",
+            },
+            data=json.dumps({"assignees": assignees}),
+        )
+        return r.json()
+
+    def comment_pr(self, repo_name: str, pr_number: int, comment_text: str) -> dict:
+        url = f"https://api.github.com/repos/{repo_name}/issues/{pr_number}/comments"
+        r = requests.post(
+            url=url,
+            headers={
+                "Authorization": "token " + self.token,
+                "Accept": "application/vnd.github+json",
+            },
+            data=json.dumps(
+                {
+                    "body": comment_text,
+                }
+            ),
+        )
+        return r.json()
 
     def get_pr_list(self, repo_name: str) -> list:
         """获取 pr 列表
@@ -196,6 +236,21 @@ class Sync:
             unix_ms_timestamp = 946656000000
         return unix_ms_timestamp
 
+    def get_pr_assign_issue_id(self, pr_body: str) -> int:
+        issue_id_str_1 = re.findall(r"- fix #(\d+)", pr_body)
+        issue_id_str_2 = re.findall(
+            r"- fix https:\/\/github\.com\/labex-labs\/scenarios\/issues\/(\d+)",
+            pr_body,
+        )
+        try:
+            issue_id = int(issue_id_str_1[0])
+        except:
+            try:
+                issue_id = int(issue_id_str_2[0])
+            except:
+                issue_id = 0
+        return issue_id
+
     def sync_pr(self, repo_name: str) -> None:
         # Get all records from feishu
         records = self.feishu.get_bitable_records(
@@ -208,8 +263,21 @@ class Sync:
         print(f"Found {len(pr_list)} pr in GitHub.")
         for pr in pr_list:
             try:
-                # parse index.json
+                # Parse and Update index.json
                 pr_number = pr["number"]
+                pr_user = pr["user"]["login"]
+                # assignees
+                assignees = pr["assignees"]
+                if len(assignees) == 0 or assignees == None:
+                    assignees_list = []
+                else:
+                    assignees_list = [a["login"] for a in assignees]
+                # labels
+                pr_labels = pr["labels"]
+                if len(pr_labels) == 0:
+                    pr_labels_list = []
+                else:
+                    pr_labels_list = [l["name"] for l in pr_labels]
                 index_json, lab_path = self.pr_index_json(repo_name, pr_number)
                 if index_json != None:
                     lab_title = index_json.get("title")
@@ -217,20 +285,7 @@ class Sync:
                     lab_steps = index_json.get("details").get("steps")
                     pr_title = pr["title"]
                     pr_state = pr["state"]
-                    pr_user = pr["user"]["login"]
                     pr_html_url = pr["html_url"]
-                    # assignees
-                    assignees = pr["assignees"]
-                    if len(assignees) == 0:
-                        assignees = []
-                    else:
-                        assignees = [a["login"] for a in assignees]
-                    # labels
-                    pr_labels = pr["labels"]
-                    if len(pr_labels) == 0:
-                        pr_labels = []
-                    else:
-                        pr_labels = [l["name"] for l in pr_labels]
                     # milestone
                     milestone = pr.get("milestone")
                     if milestone != None:
@@ -255,14 +310,14 @@ class Sync:
                             "PR_USER": pr_user,
                             "PR_NUM": pr_number,
                             "PR_STATE": pr_state.upper(),
-                            "PR_LABELS": pr_labels,
-                            "ASSIGNEES": assignees,
+                            "PR_LABELS": pr_labels_list,
+                            "ASSIGNEES": assignees_list,
                             "MILESTONE": milestone,
                             "CHANGES_REQUESTED": changes_requested_by,
                             "APPROVED": approved_by,
                             "CREATED_AT": created_at,
-                            "UPDATED_AT":updated_at,
-                            "MERGED_AT":merged_at,
+                            "UPDATED_AT": updated_at,
+                            "MERGED_AT": merged_at,
                             "HTML_URL": {
                                 "link": pr_html_url,
                                 "text": "OPEN IN GITHUB",
@@ -286,6 +341,34 @@ class Sync:
                         print(f"↑ Adding {lab_path} {r['msg'].upper()}")
                 else:
                     print(f"→ Skipping {pr_number} because no index.json found.")
+                # Assign issue user to PR
+                pr_body = pr["body"]
+                issue_id = self.get_pr_assign_issue_id(pr_body)
+                if issue_id != 0:
+                    issue = self.github.get_issue(repo_name, issue_id)
+                    issue_user = issue["user"]["login"]
+                    # 判断是否已经assign
+                    if issue_user not in assignees_list:
+                        if "Test Completed" in pr_labels_list:
+                            # 添加 Assignees
+                            assignees_list.append(issue_user)
+                            self.github.patch_pr_assignees(
+                                repo_name, pr_number, assignees_list
+                            )
+                            # 添加评论
+                            comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review"
+                            self.github.comment_pr(repo_name, pr_number, comment)
+                            print(
+                                f"→ Assign {issue_user} to PR#{pr_number}, and comment to reviewer {issue_user}"
+                            )
+                        else:
+                            print(f"→ PR#{pr_number} is not Test Completed")
+                    else:
+                        print(f"→ {issue_user} already assign to PR#{pr_number}")
+                else:
+                    comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。"
+                    self.github.comment_pr(repo_name, pr_number, comment)
+                    print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
             except Exception as e:
                 print(f"Exception: {e}")
                 continue
