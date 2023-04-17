@@ -344,44 +344,45 @@ class Sync:
                 # Assign issue user to PR
                 pr_body = pr["body"]
                 issue_id = self.get_pr_assign_issue_id(pr_body)
-                # 如果 issue_id 不为 0，且 pr_state 为 open
-                if issue_id != 0 and pr_state == "open":
-                    issue = self.github.get_issue(repo_name, issue_id)
-                    issue_user = issue["user"]["login"]
-                    # 判断是否已经测试完成
-                    if "Test Completed" in pr_labels_list:
-                        # 测完，如果 issue user 不在 assignees 里，准备添加
-                        if issue_user not in assignees_list:
-                            # 特殊处理，当 issue user 为 pr user 时，添加 huhuhang
-                            if issue_user == pr_user:
-                                assignees_list.append("huhuhang")
-                                comment = f"Hi, @huhuhang \n\n系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
+                # 只处理 open 的 pr
+                if pr_state == "open":
+                    # 如果 issue_id 不为 0
+                    if issue_id != 0:
+                        issue = self.github.get_issue(repo_name, issue_id)
+                        issue_user = issue["user"]["login"]
+                        # 判断是否已经测试完成
+                        if "Test Completed" in pr_labels_list:
+                            # 测完，如果 issue user 不在 assignees 里，准备添加
+                            if issue_user not in assignees_list:
+                                # 特殊处理，当 issue user 为 pr user 时，添加 huhuhang
+                                if issue_user == pr_user:
+                                    assignees_list.append("huhuhang")
+                                    comment = f"Hi, @huhuhang \n\n系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
+                                else:
+                                    # 添加 issue user
+                                    assignees_list.append(issue_user)
+                                    comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
+                                self.github.patch_pr_assignees(
+                                    repo_name, pr_number, assignees_list
+                                )
+                                # 添加评论 
+                                self.github.comment_pr(repo_name, pr_number, comment)
+                                print(
+                                    f"→ Assign {assignees_list} to PR#{pr_number}, and comment to reviewer"
+                                )
                             else:
-                                # 添加 issue user
-                                assignees_list.append(issue_user)
-                                comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
-                            self.github.patch_pr_assignees(
-                                repo_name, pr_number, assignees_list
-                            )
-                            # 添加评论 
-                            self.github.comment_pr(repo_name, pr_number, comment)
-                            print(
-                                f"→ Assign {assignees_list} to PR#{pr_number}, and comment to reviewer"
-                            )
+                                # 测完，如果 issue user 在 assignees 里
+                                print(f"→ {issue_user} already assign to PR#{pr_number}")
                         else:
-                            # 测完，如果 issue user 在 assignees 里
-                            print(f"→ {issue_user} already assign to PR#{pr_number}")
+                            # 未测完
+                            print(f"→ PR#{pr_number} is not Test Completed")
+                    # 如果 issue_id 为 0
                     else:
-                        # 未测完
-                        print(f"→ PR#{pr_number} is not Test Completed")
-                # 如果 issue_id 为 0
-                else:
-                    if pr_state == "open":
                         comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。\n\n如有疑问可以直接回复本条评论，或者微信联系。"
                         self.github.comment_pr(repo_name, pr_number, comment)
                         print(f"→ No issue id found in {pr_number}, comment to {pr_user}")
-                    else:
-                        print(f"→ PR#{pr_number} is closed, skip assign issue user and comment to PR user")
+                else:
+                    print(f"→ PR#{pr_number} is closed, skiped")
             except Exception as e:
                 print(f"Exception: {e}")
                 continue
