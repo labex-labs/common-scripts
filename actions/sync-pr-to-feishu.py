@@ -168,12 +168,12 @@ class GitHub:
             page += 1
 
         # 仅保留 open 和 merged 状态的 PR
-        only_pulls = [
-            pull
-            for pull in all_pulls
-            if pull["state"] == "open" or pull.get("merged_at") is not None
-        ]
-        return only_pulls
+        # only_pulls = [
+        #     pull
+        #     for pull in all_pulls
+        #     if pull["state"] == "open" or pull.get("merged_at") is not None
+        # ]
+        return all_pulls
 
 
 class Sync:
