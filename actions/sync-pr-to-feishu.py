@@ -369,7 +369,7 @@ class Sync:
                                 if issue_user not in assignees_list:
                                     # 添加 issue user
                                     assignees_list.append(issue_user)
-                                    comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
+                                    comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n> 这是一条自动消息，如有疑问可以直接回复本条评论，或者微信联系。"
                                     self.github.patch_pr_assignees(
                                         repo_name, pr_number, assignees_list
                                     )
@@ -387,7 +387,7 @@ class Sync:
                                 if "huhuhang" not in assignees_list:
                                     # 添加 huhuhang
                                     assignees_list.append("huhuhang")
-                                    comment = f"Hi, @huhuhang \n\n系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n如有疑问可以直接回复本条评论，或者微信联系。"
+                                    comment = f"Hi, @huhuhang \n\n系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。\n\n- Review 操作指南和标准详见：https://www.labex.wiki/zh/advanced/how-to-review \n\n> 这是一条自动消息，如有疑问可以直接回复本条评论，或者微信联系。"
                                     self.github.patch_pr_assignees(
                                         repo_name, pr_number, assignees_list
                                     )
@@ -404,7 +404,7 @@ class Sync:
                             print(f"→ PR#{pr_number} is not Test Completed")
                     # 如果 issue_id 为 0
                     else:
-                        comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。\n\n如有疑问可以直接回复本条评论，或者微信联系。"
+                        comment = f"Hi, @{pr_user} \n\n该 PR 未检测到正确关联 Issue，请你在 PR 描述中按要求添加，如有问题请及时联系 LabEx 的同事。\n\n> 这是一条自动消息，如有疑问可以直接回复本条评论，或者微信联系。"
                         self.github.comment_pr(repo_name, pr_number, comment)
                         print(
                             f"→ No issue id found in {pr_number}, comment to {pr_user}"
