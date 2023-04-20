@@ -222,7 +222,7 @@ class Sync:
         for review in response.json():
             if review["state"] == "APPROVED":
                 approved_by.append(review["user"]["login"])
-            elif review["state"] == "CHANGES_REQUESTED":
+            elif review["state"] == "CHANGES_REQUESTED" or "COMMENTED":
                 changes_requested_by.append(review["user"]["login"])
         return list(set(approved_by)), list(set(changes_requested_by))
 
