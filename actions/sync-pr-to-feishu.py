@@ -102,9 +102,7 @@ class GitHub:
         r = requests.get(url, headers=headers)
         return r.json()
 
-    def patch_pr_assignees(
-        self, repo_name: str, pr_number: int, assignees: list
-    ) -> dict:
+    def patch_pr(self, repo_name: str, pr_number: int, payloads: dict) -> dict:
         url = f"https://api.github.com/repos/{repo_name}/issues/{pr_number}"
         r = requests.patch(
             url=url,
@@ -112,7 +110,7 @@ class GitHub:
                 "Authorization": "token " + self.token,
                 "Accept": "application/vnd.github+json",
             },
-            data=json.dumps({"assignees": assignees}),
+            data=json.dumps(payloads),
         )
         return r.json()
 
@@ -175,6 +173,18 @@ class GitHub:
         # ]
         return all_pulls
 
+    def list_milestone(self, repo_name: str) -> list:
+        """获取 milestone 列表"""
+        url = f"https://api.github.com/repos/{repo_name}/milestones"
+        headers = {
+            "Authorization": "token " + self.token,
+            "Accept": "application/vnd.github+json",
+        }
+        r = requests.get(url, headers=headers)
+        # 获取 title 和 number 的字典
+        title_nums = {m["title"]: m["number"] for m in r.json()}
+        return title_nums
+
 
 class Sync:
     def __init__(self, app_id: str, app_secret: str, ghtoken: str) -> None:
@@ -236,6 +246,21 @@ class Sync:
             unix_ms_timestamp = 946656000000
         return unix_ms_timestamp
 
+    def date_milestone(self, date_str: str) -> int:
+        """获取日期所在周数组成 milestone
+
+        Args:
+            date_str (str): 2023-04-21T07:06:13Z
+
+        Returns:
+            int: 16
+        """
+        date_obj = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
+        year = date_obj.year
+        week_num = date_obj.isocalendar()[1]
+        milestone = f"{year}W{week_num}"
+        return milestone
+
     def get_pr_assign_issue_id(self, pr_body: str) -> int:
         issue_id_str_1 = re.findall(r"- fix #(\d+)", pr_body)
         issue_id_str_2 = re.findall(
@@ -261,8 +286,15 @@ class Sync:
         # Get all pr from github
         pr_list = self.github.get_pr_list(repo_name)
         print(f"Found {len(pr_list)} PR in GitHub.")
+        # Get all milestone from github
+        milestones = self.github.list_milestone(repo_name)
+        print(f"Found {len(milestones)} milestone in GitHub.")
         # Feishu 未关闭的 PR
-        feishu_not_closed_pr_nums = [str(r["fields"]["PR_NUM"]) for r in records if r["fields"]["PR_STATE"] == "OPEN"]
+        feishu_not_closed_pr_nums = [
+            str(r["fields"]["PR_NUM"])
+            for r in records
+            if r["fields"]["PR_STATE"] == "OPEN"
+        ]
         print(f"Found {len(feishu_not_closed_pr_nums)} OPEN PR in Feishu.")
         # 忽略已经关闭的 PR
         pr_list = [
@@ -363,16 +395,37 @@ class Sync:
                         issue_user = issue["user"]["login"]
                         # 判断是否已经测试完成
                         if "Test Completed" in pr_labels_list:
+                            # 尝试处理 PR 的 milestone
+                            pr_milestone = pr.get("milestone")
+                            # 如果 PR 原本不存在 milestone
+                            if pr_milestone == None:
+                                # 使用更新日期所在的周作为 milestone
+                                date_milestone_str = self.date_milestone(
+                                    pr["updated_at"]
+                                )
+                                pr_milestone_number = milestones.get(
+                                    date_milestone_str, None
+                                )
                             # 测试完成，如果 issue user 不等于 pr_user
                             if issue_user != pr_user:
                                 # 且 issue user 不在 assignees 里，准备添加
                                 if issue_user not in assignees_list:
                                     # 添加 issue user
                                     assignees_list.append(issue_user)
-                                    comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n[❓ 如何 Review](https://www.labex.wiki/zh/advanced/how-to-review) | [✍️ LabEx 手册](https://www.labex.wiki/zh/advanced/how-to-review) | [🏪 LabEx 网站](https://labex.io) \n\n> 这是一条自动消息，如有疑问可以直接回复本条评论，或者微信联系。"
-                                    self.github.patch_pr_assignees(
-                                        repo_name, pr_number, assignees_list
+                                    payloads = {"assignees": assignees_list}
+                                    # 如果 pr_milestone 为 None，即 milestone 不存在需要添加
+                                    if pr_milestone == None:
+                                        payloads["milestone"] = pr_milestone_number
+                                        print(
+                                            f"→ Setting milestone to {date_milestone_str}, {pr_milestone_number}"
+                                        )
+                                    self.github.patch_pr(
+                                        repo_name,
+                                        pr_number,
+                                        payloads,
                                     )
+                                    # 添加评论
+                                    comment = f"Hi, @{issue_user} \n\n由于该 PR 关联了由你创建的 Issue，系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。确认无误后，可以执行 `Approve` 操作，LabEx 会二次确认后再合并。请勿自行合并 PR。\n\n[❓ 如何 Review](https://www.labex.wiki/zh/advanced/how-to-review) | [✍️ LabEx 手册](https://www.labex.wiki/zh/advanced/how-to-review) | [🏪 LabEx 网站](https://labex.io) \n\n> 这是一条自动消息，如有疑问可以直接回复本条评论，或者微信联系。"
                                     self.github.comment_pr(
                                         repo_name, pr_number, comment
                                     )
@@ -387,10 +440,20 @@ class Sync:
                                 if "huhuhang" not in assignees_list:
                                     # 添加 huhuhang
                                     assignees_list.append("huhuhang")
-                                    comment = f"Hi, @huhuhang \n\n系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。\n\n[❓ 如何 Review](https://www.labex.wiki/zh/advanced/how-to-review) | [✍️ LabEx 手册](https://www.labex.wiki/zh/advanced/how-to-review) | [🏪 LabEx 网站](https://labex.io) \n\n> 这是一条自动消息，如有疑问可以直接回复本条评论，或者微信联系。"
-                                    self.github.patch_pr_assignees(
-                                        repo_name, pr_number, assignees_list
+                                    payloads = {"assignees": assignees_list}
+                                    # 如果 pr_milestone 为 None，即 milestone 不存在需要添加
+                                    if pr_milestone == None:
+                                        payloads["milestone"] = pr_milestone_number
+                                        print(
+                                            f"→ Setting milestone to {date_milestone_str}, {pr_milestone_number}"
+                                        )
+                                    self.github.patch_pr(
+                                        repo_name,
+                                        pr_number,
+                                        payloads,
                                     )
+                                    # 添加评论
+                                    comment = f"Hi, @huhuhang \n\n系统已将你自动分配为 Reviewer，请你及时完成 Review，并和作者进行沟通。\n\n[❓ 如何 Review](https://www.labex.wiki/zh/advanced/how-to-review) | [✍️ LabEx 手册](https://www.labex.wiki/zh/advanced/how-to-review) | [🏪 LabEx 网站](https://labex.io) \n\n> 这是一条自动消息，如有疑问可以直接回复本条评论，或者微信联系。"
                                     self.github.comment_pr(
                                         repo_name, pr_number, comment
                                     )
