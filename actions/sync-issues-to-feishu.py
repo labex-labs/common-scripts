@@ -2,6 +2,7 @@ import re
 import json
 import requests
 import argparse
+from datetime import datetime, timedelta
 
 
 class Feishu:
@@ -140,6 +141,16 @@ class Sync:
         self.app_token = "bascnNz4Nqjqgqm1Nm5AYke6xxb"
         self.table_id = "tblLnz5UqvvHb5Z0"
         self.skills_table_id = "tblV5pGIsGZMxmE9"
+    
+    def unix_ms_timestamp(self, time_str: str) -> int:
+        if time_str != None:
+            date_obj = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%SZ") + timedelta(
+                hours=8
+            )
+            unix_ms_timestamp = int(date_obj.timestamp() * 1000)
+        else:
+            unix_ms_timestamp = 946656000000
+        return unix_ms_timestamp
 
     def sync_issues(self, repo_name: str) -> None:
         # Get all skills from feishu
@@ -168,6 +179,9 @@ class Sync:
                     issue_state = issue["state"]
                     issue_user = issue["user"]["login"]
                     issues_html_url = issue["html_url"]
+                    created_at = self.unix_ms_timestamp(issue["created_at"])
+                    updated_at = self.unix_ms_timestamp(issue["updated_at"])
+                    closed_at = self.unix_ms_timestamp(issue["closed_at"])
                     # assignees
                     assignees = issue["assignees"]
                     if len(assignees) == 0:
@@ -209,6 +223,9 @@ class Sync:
                             "ISSUE_STATE": issue_state.upper(),
                             "ISSUE_USER": issue_user,
                             "ISSUE_STEPS": steps_num,
+                            "CREATED_AT": created_at,
+                            "UPDATED_AT": updated_at,
+                            "CLOSED_AT": closed_at,
                             "HTML_URL": {
                                 "link": issues_html_url,
                                 "text": "OPEN IN GITHUB",
