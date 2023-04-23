@@ -144,6 +144,8 @@ class Sync:
             lab_direction = direction[0].replace("./", "").title()
             if lab_direction == "Numpy":
                 lab_direction = "NumPy"
+            elif lab_direction == "Opencv":
+                lab_direction = "OpenCV"
         else:
             lab_direction = None
         lab_title = index.get("title", None)
