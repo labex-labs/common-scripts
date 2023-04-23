@@ -300,7 +300,7 @@ class Sync:
         pr_list = [
             pr
             for pr in pr_list
-            if pr["state"] == "open" or str(pr["number"]) in feishu_not_closed_pr_nums
+            if pr["state"] == "open" or str(pr["number"]) in feishu_not_closed_pr_nums or pr["locked"] == False
         ]
         print(f"Processing {len(pr_list)} OPEN PR...")
         for pr in pr_list:
